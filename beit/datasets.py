@@ -9,6 +9,7 @@
 # https://github.com/facebookresearch/deit/
 # https://github.com/facebookresearch/dino
 # --------------------------------------------------------'
+from ast import arg
 import os
 import torch
 
@@ -23,6 +24,70 @@ from dall_e.utils import map_pixels
 from masking_generator import MaskingGenerator
 from dataset_folder import ImageFolder
 
+import numpy as np
+import torch.utils.data as data
+import os
+from PIL import Image
+
+
+def process_relative_coords_file(coords_text):
+    coords_list = coords_text.split(",")
+    coords = []
+    for i in range(len(coords_list)):
+        coords.append(coords_list[i])
+    return np.array(coords).astype("float32")
+
+
+NO_OBJECT_SIZE_TRAIN = 113
+NO_OBJECT_SIZE_VALIDATE = 28
+
+OBJECT_SIZE_TRAIN = 149
+OBJECT_SIZE_VALIDATE = 37
+OBJECTS_IN_FILE = 1024
+
+
+class GanHands(data.Dataset):
+    def __init__(self, directory, training, transform):
+        self.directory = directory
+        self.labels = []
+        if training:
+            for folder in range(1, NO_OBJECT_SIZE_TRAIN):
+                for i in range(1, OBJECTS_IN_FILE + 1):
+                    self.labels.append("noObject/{:04d}/{:04d}".format(folder, i))
+            for folder in range(1, OBJECT_SIZE_TRAIN):
+                for i in range(1, OBJECTS_IN_FILE + 1):
+                    self.labels.append("withObject/{:04d}/{:04d}".format(folder, i))
+        else:
+            for folder in range(NO_OBJECT_SIZE_TRAIN, NO_OBJECT_SIZE_TRAIN + NO_OBJECT_SIZE_VALIDATE):
+                for i in range(1, OBJECTS_IN_FILE + 1):
+                    self.labels.append("noObject/{:04d}/{:04d}".format(folder, i))
+            for folder in range(OBJECT_SIZE_TRAIN, OBJECT_SIZE_TRAIN + OBJECT_SIZE_VALIDATE):
+                for i in range(1, OBJECTS_IN_FILE + 1):
+                    self.labels.append("withObject/{:04d}/{:04d}".format(folder, i))
+        
+        self.__transform = transform
+        self.__length = len(self.labels)
+
+    def __len__(self):
+        return self.__length
+
+    def __getitem__(self, index):
+        # image
+        image_file = self.labels[index] + "_color_composed.png"
+        relative_coords_file = self.labels[index] + "_joint_pos.txt"
+        image = Image.open(os.path.join(self.directory, image_file))
+        image = np.asarray(image)
+        image = image / 255
+
+        relative_coords_file = open(os.path.join(self.directory, relative_coords_file)).read()
+        coords = process_relative_coords_file(relative_coords_file)
+        sample = {"image": image, "coords": coords}
+
+        # transforms
+        if self.__transform is not None:
+            sample = self.__transform(sample)
+
+        return sample
 
 class DataAugmentationForBEiT(object):
     def __init__(self, args):
@@ -111,6 +176,10 @@ def build_dataset(is_train, args):
         root = os.path.join(args.data_path, 'train' if is_train else 'val')
         dataset = datasets.ImageFolder(root, transform=transform)
         nb_classes = 1000
+    elif args.data_set == 'GANRated':
+        root = os.path.join(args.data_path)
+        dataset = GanHands(root, is_train, transform)
+        nb_classes = 63
     elif args.data_set == "image_folder":
         root = args.data_path if is_train else args.eval_data_path
         dataset = ImageFolder(root, transform=transform)
