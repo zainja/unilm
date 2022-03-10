@@ -85,7 +85,7 @@ class GanHands(data.Dataset):
 
         # transforms
         if self.__transform is not None:
-            sample = self.__transform(sample)
+            sample = self.__transform(sample["image"])
 
         return sample
 

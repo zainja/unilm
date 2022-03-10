@@ -511,13 +511,13 @@ def main(args, ds_init):
         args.weight_decay, args.weight_decay_end, args.epochs, num_training_steps_per_epoch)
     print("Max WD = %.7f, Min WD = %.7f" % (max(wd_schedule_values), min(wd_schedule_values)))
 
-    if mixup_fn is not None:
+    if args.data_set == 'GANRated':
+        criterion = MSELoss()
+    elif mixup_fn is not None:
         # smoothing is handled with mixup label transform
         criterion = SoftTargetCrossEntropy()
     elif args.smoothing > 0.:
         criterion = LabelSmoothingCrossEntropy(smoothing=args.smoothing)
-    elif args.data_set == 'GANRated':
-        criterion = MSELoss()
     else:
         criterion = torch.nn.CrossEntropyLoss()
 
