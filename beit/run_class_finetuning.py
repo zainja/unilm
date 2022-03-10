@@ -23,6 +23,7 @@ from pathlib import Path
 from timm.data.mixup import Mixup
 from timm.models import create_model
 from timm.loss import LabelSmoothingCrossEntropy, SoftTargetCrossEntropy
+from torch.nn import MSELoss
 from timm.utils import ModelEma
 from optim_factory import create_optimizer, get_parameter_groups, LayerDecayValueAssigner
 
@@ -156,7 +157,7 @@ def get_args():
                         help='number of the classification types')
     parser.add_argument('--imagenet_default_mean_and_std', default=False, action='store_true')
 
-    parser.add_argument('--data_set', default='IMNET', choices=['CIFAR', 'IMNET', 'image_folder'],
+    parser.add_argument('--data_set', default='IMNET', choices=['CIFAR', 'IMNET','GANRated', 'image_folder'],
                         type=str, help='ImageNet dataset path')
     parser.add_argument('--output_dir', default='',
                         help='path where to save, empty for no saving')
@@ -515,6 +516,8 @@ def main(args, ds_init):
         criterion = SoftTargetCrossEntropy()
     elif args.smoothing > 0.:
         criterion = LabelSmoothingCrossEntropy(smoothing=args.smoothing)
+    elif args.data_set == 'GANRated':
+        criterion = MSELoss()
     else:
         criterion = torch.nn.CrossEntropyLoss()
 
