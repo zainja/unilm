@@ -104,7 +104,7 @@ class GanHands(data.Dataset):
         if self.__transform is not None:
             image = self.__transform(image)
 
-        return image, coords, (root,scale)
+        return image, coords, absolute_coords, (root,scale)
 
 class DataAugmentationForBEiT(object):
     def __init__(self, args):

@@ -31,11 +31,14 @@ from tensorboardX import SummaryWriter
 def pck_metric(true_coords, predicted_coords, root, scale, threshold=10):
     batch_size = true_coords.size()[0]
     true_coords = torch.reshape(true_coords, (batch_size, 21, 3))
-    predicted_coords = torch.reshape(true_coords, (batch_size, 21, 3))
-    diff = predicted_coords - true_coords
-    scaled_shifted_diff = (diff + root) * scale
-    distance = torch.sqrt(torch.sum(torch.square(scaled_shifted_diff), axis=-1))
-    return torch.mean(distance <= threshold)
+    predicted_coords = torch.reshape(predicted_coords, (batch_size, 21, 3))
+    pck_vals = []
+    for i in range(batch_size):
+        shifted_predicted_coords = (predicted_coords[i] * scale[i]) + root[i]
+        diff = true_coords - shifted_predicted_coords
+        distance = torch.sqrt(torch.sum(torch.square(diff), axis=-1))
+        pck_vals.append(torch.Tensor.float(distance <= threshold).mean())
+    return torch.tensor(pck_vals).mean()
 
 class SmoothedValue(object):
     """Track a series of values and provide access to smoothed values over a

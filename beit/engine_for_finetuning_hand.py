@@ -156,11 +156,13 @@ def evaluate(data_loader, model, device):
     for batch in metric_logger.log_every(data_loader, 10, header):
         images = batch[0]
         target = batch[1]
-        (root, scale) = batch[2]
+        global_target = batch[2]
+        (root, scale) = batch[3]
         images = images.to(device, non_blocking=True)
         target = target.to(device, non_blocking=True)
         root = root.to(device, non_blocking=True)
         scale = scale.to(device, non_blocking=True)
+        global_target = global_target.to(device, non_blocking=True)
         # compute output
         with torch.cuda.amp.autocast():
             output = model(images)
@@ -168,9 +170,9 @@ def evaluate(data_loader, model, device):
 
 
         batch_size = images.shape[0]
-        pck_10 = utils.pck_metric(target, output, root, scale, 10)
-        pck_20 = utils.pck_metric(target, output, root, scale, 20)
-        pck_30 = utils.pck_metric(target, output, root, scale, 30)
+        pck_10 = utils.pck_metric(global_target, output, root, scale, 10)
+        pck_20 = utils.pck_metric(global_target, output, root, scale, 20)
+        pck_30 = utils.pck_metric(global_target, output, root, scale, 30)
         metric_logger.meters["pck10"].update(pck_10, n=batch_size)
         metric_logger.meters["pck20"].update(pck_20, n=batch_size)
         metric_logger.meters["pck30"].update(pck_30, n=batch_size)
