@@ -29,13 +29,13 @@ from modeling_discrete_vae import Dalle_VAE, DiscreteVAE
 from tensorboardX import SummaryWriter
 
 def pck_metric(true_coords, predicted_coords, root, scale, threshold=10):
-    batch_size = true_coords.shape[0]
-    true_coords = np.reshape(true_coords, (batch_size, 21, 3))
-    predicted_coords = np.reshape(true_coords, (batch_size, 21, 3))
+    batch_size = true_coords.size()[0]
+    true_coords = torch.reshape(true_coords, (batch_size, 21, 3))
+    predicted_coords = torch.reshape(true_coords, (batch_size, 21, 3))
     diff = predicted_coords - true_coords
     scaled_shifted_diff = (diff + root) * scale
-    distance = np.sqrt(np.sum(np.square(scaled_shifted_diff), axis=-1))
-    return np.mean(distance <= threshold)
+    distance = torch.sqrt(torch.sum(torch.square(scaled_shifted_diff), axis=-1))
+    return torch.mean(distance <= threshold)
 
 class SmoothedValue(object):
     """Track a series of values and provide access to smoothed values over a

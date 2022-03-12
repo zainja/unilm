@@ -91,11 +91,12 @@ class GanHands(data.Dataset):
         # image
         image_file = self.labels[index] + "_color_composed.png"
         relative_coords_file = self.labels[index] + "_joint_pos.txt"
+        absolute_coords_file = self.labels[index] + "_joint_pos_global.txt"
         image = Image.open(os.path.join(self.directory, image_file))
 
         relative_coords_file = open(os.path.join(self.directory, relative_coords_file)).read()
         coords = process_coords_file(relative_coords_file)
-        absolute_coords_file = self.labels["index"] + "_joint_pos_global.txt"
+        absolute_coords_file = open(os.path.join(self.directory, absolute_coords_file)).read()
         absolute_coords = process_coords_file(absolute_coords_file)
         root, scale = get_root_and_scale(absolute_coords)
 
