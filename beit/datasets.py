@@ -30,7 +30,7 @@ import os
 from PIL import Image
 
 def count_files(directory):
-    return len([name for name in os.listdir(directory) if os.path.isfile(name)])
+    return len([name for name in os.listdir(directory)])
 
 def process_coords_file(coords_text):
     coords_list = coords_text.split(",")
@@ -50,13 +50,13 @@ def get_root_and_scale(absolute_coords):
 
 
 class GanHands(data.Dataset):
-    def __init__(self, directory, training, transform, training_split):
+    def __init__(self, directory, training, transform, training_split=0.8):
         self.directory = directory
-        NO_OBJECT_SIZE_TRAIN = count_files(os.path.join(directory, "noObject")) * training_split
-        NO_OBJECT_SIZE_VALIDATE = count_files(os.path.join(directory, "noObject")) * (1 - training_split)
-        OBJECT_SIZE_TRAIN = count_files(os.path.join(directory, "withObject")) * training_split
-        OBJECT_SIZE_VALIDATE = count_files(os.path.join(directory, "withObject")) * (1 - training_split)
-        print("Files count {NO_OBJECT_SIZE_TRAIN} {NO_OBJECT_SIZE_VALIDATE} {OBJECT_SIZE_TRAIN} {OBJECT_SIZE_VALIDATE}")
+        NO_OBJECT_SIZE_TRAIN = int(count_files(os.path.join(directory, "noObject")) * training_split)
+        NO_OBJECT_SIZE_VALIDATE = int(count_files(os.path.join(directory, "noObject")) * (1 - training_split))
+        OBJECT_SIZE_TRAIN = int(count_files(os.path.join(directory, "withObject")) * training_split)
+        OBJECT_SIZE_VALIDATE = int(count_files(os.path.join(directory, "withObject")) * (1 - training_split))
+
         self.labels = []
         if training:
             for folder in range(1, NO_OBJECT_SIZE_TRAIN):

@@ -29,8 +29,9 @@ from modeling_discrete_vae import Dalle_VAE, DiscreteVAE
 from tensorboardX import SummaryWriter
 
 def pck_metric(true_coords, predicted_coords, root, scale, threshold=10):
-    true_coords = np.reshape(true_coords, (21, 3))
-    predicted_coords = np.reshape(true_coords, (21, 3))
+    batch_size = true_coords.shape[0]
+    true_coords = np.reshape(true_coords, (batch_size, 21, 3))
+    predicted_coords = np.reshape(true_coords, (batch_size, 21, 3))
     diff = predicted_coords - true_coords
     scaled_shifted_diff = (diff + root) * scale
     distance = np.sqrt(np.sum(np.square(scaled_shifted_diff), axis=-1))
