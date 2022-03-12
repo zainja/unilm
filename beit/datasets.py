@@ -29,46 +29,58 @@ import torch.utils.data as data
 import os
 from PIL import Image
 
+def count_files(directory):
+    return len([name for name in os.listdir(directory) if os.path.isfile(name)])
 
-def process_relative_coords_file(coords_text):
+def process_coords_file(coords_text):
     coords_list = coords_text.split(",")
     coords = []
     for i in range(len(coords_list)):
         coords.append(coords_list[i])
     return np.array(coords).astype("float32")
 
+def get_root_and_scale(absolute_coords):
+    joints = np.reshape(absolute_coords, (21, 3))
+    M0 = joints[9]
+    joints = joints - M0
+    W0 = joints[0]
+    distance = np.sqrt(W0.dot(W0))
+    return M0, distance
 
-NO_OBJECT_SIZE_TRAIN = 113
-NO_OBJECT_SIZE_VALIDATE = 28
-
-OBJECT_SIZE_TRAIN = 149
-OBJECT_SIZE_VALIDATE = 37
 
 
 class GanHands(data.Dataset):
-    def __init__(self, directory, training, transform):
+    def __init__(self, directory, training, transform, training_split):
         self.directory = directory
+        NO_OBJECT_SIZE_TRAIN = count_files(os.path.join(directory, "noObject")) * training_split
+        NO_OBJECT_SIZE_VALIDATE = count_files(os.path.join(directory, "noObject")) * (1 - training_split)
+        OBJECT_SIZE_TRAIN = count_files(os.path.join(directory, "withObject")) * training_split
+        OBJECT_SIZE_VALIDATE = count_files(os.path.join(directory, "withObject")) * (1 - training_split)
+        print("Files count {NO_OBJECT_SIZE_TRAIN} {NO_OBJECT_SIZE_VALIDATE} {OBJECT_SIZE_TRAIN} {OBJECT_SIZE_VALIDATE}")
         self.labels = []
         if training:
             for folder in range(1, NO_OBJECT_SIZE_TRAIN):
-                objects_count =  len([name for name in os.listdir('.') if os.path.isfile(name)]) // 5
+                folder_path = os.path.join(directory, "noObject", "{:04d}".format(folder))
+                objects_count =  count_files(folder_path) // 5
                 for i in range(1, objects_count + 1):
                     self.labels.append("noObject/{:04d}/{:04d}".format(folder, i))
             for folder in range(1, OBJECT_SIZE_TRAIN):
-                objects_count =  len([name for name in os.listdir('.') if os.path.isfile(name)]) // 5
+                folder_path = os.path.join(directory, "withObject", "{:04d}".format(folder))
+                objects_count =  count_files(folder_path) // 5
                 for i in range(1, objects_count + 1):
                     self.labels.append("withObject/{:04d}/{:04d}".format(folder, i))
         else:
             for folder in range(NO_OBJECT_SIZE_TRAIN, NO_OBJECT_SIZE_TRAIN + NO_OBJECT_SIZE_VALIDATE):
-                objects_count =  len([name for name in os.listdir('.') if os.path.isfile(name)]) // 5
+                folder_path = os.path.join(directory, "noObject", "{:04d}".format(folder))
+                objects_count =  count_files(folder_path) // 5
                 for i in range(1, objects_count + 1):
                     self.labels.append("noObject/{:04d}/{:04d}".format(folder, i))
-
             for folder in range(OBJECT_SIZE_TRAIN, OBJECT_SIZE_TRAIN + OBJECT_SIZE_VALIDATE):
-                objects_count =  len([name for name in os.listdir('.') if os.path.isfile(name)]) // 5
+                folder_path = os.path.join(directory, "withObject", "{:04d}".format(folder))
+                objects_count =  count_files(folder_path) // 5
                 for i in range(1, objects_count + 1):
                     self.labels.append("withObject/{:04d}/{:04d}".format(folder, i))
-        
+                    
         self.__transform = transform
         self.__length = len(self.labels)
 
@@ -82,13 +94,16 @@ class GanHands(data.Dataset):
         image = Image.open(os.path.join(self.directory, image_file))
 
         relative_coords_file = open(os.path.join(self.directory, relative_coords_file)).read()
-        coords = process_relative_coords_file(relative_coords_file)
+        coords = process_coords_file(relative_coords_file)
+        absolute_coords_file = self.labels["index"] + "_joint_pos_global.txt"
+        absolute_coords = process_coords_file(absolute_coords_file)
+        root, scale = get_root_and_scale(absolute_coords)
 
         # transforms
         if self.__transform is not None:
             image = self.__transform(image)
 
-        return image, coords
+        return image, coords, (root,scale)
 
 class DataAugmentationForBEiT(object):
     def __init__(self, args):

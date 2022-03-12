@@ -526,7 +526,7 @@ def main(args, ds_init):
 
     print(f"Start training for {args.epochs} epochs")
     start_time = time.time()
-    max_loss = 10000000
+    max_pck = -1
     for epoch in range(args.start_epoch, args.epochs):
         if args.distributed:
             data_loader_train.sampler.set_epoch(epoch)
@@ -546,16 +546,19 @@ def main(args, ds_init):
                     loss_scaler=loss_scaler, epoch=epoch, model_ema=model_ema)
         if data_loader_val is not None:
             test_stats = evaluate(data_loader_val, model, device)
-            print(f"Loss of the network on the {len(dataset_val)} test images: {test_stats['loss']:.1f}%")
-            if max_loss > test_stats["loss"]:
-                max_loss = test_stats["loss"]
+            print(f"Max PCK10 of the network on the {len(dataset_val)} test images: {test_stats['loss']:.1f}%")
+            if max_pck < test_stats["pck10"]:
+                max_pck = test_stats["pck10"]
                 if args.output_dir and args.save_ckpt:
                     utils.save_model(
                         args=args, model=model, model_without_ddp=model_without_ddp, optimizer=optimizer,
                         loss_scaler=loss_scaler, epoch="best", model_ema=model_ema)
 
-            print(f'Max Loss: {max_loss:.2f}%')
+            print(f'Max PCK10: {max_pck:.2f}%')
             if log_writer is not None:
+                log_writer.update(test_pck10=test_stats['pck10'], head="perf", step=epoch)
+                log_writer.update(test_pck20=test_stats['pck20'], head="perf", step=epoch)
+                log_writer.update(test_pck30=test_stats['pck30'], head="perf", step=epoch)
                 log_writer.update(test_loss=test_stats['loss'], head="perf", step=epoch)
 
             log_stats = {**{f'train_{k}': v for k, v in train_stats.items()},

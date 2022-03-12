@@ -12,6 +12,7 @@
 import math
 import sys
 from typing import Iterable, Optional
+from black import out
 
 import torch
 
@@ -50,7 +51,7 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
     else:
         optimizer.zero_grad()
 
-    for data_iter_step, (samples, targets) in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
+    for data_iter_step, batch in enumerate(metric_logger.log_every(data_loader, print_freq, header)):
         step = data_iter_step // update_freq
         if step >= num_training_steps_per_epoch:
             continue
@@ -62,7 +63,8 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
                     param_group["lr"] = lr_schedule_values[it] * param_group["lr_scale"]
                 if wd_schedule_values is not None and param_group["weight_decay"] > 0:
                     param_group["weight_decay"] = wd_schedule_values[it]
-
+        samples = batch[0]
+        targets = batch[1]
         samples = samples.to(device, non_blocking=True)
         targets = targets.to(device, non_blocking=True)
 
@@ -154,10 +156,12 @@ def evaluate(data_loader, model, device):
 
     for batch in metric_logger.log_every(data_loader, 10, header):
         images = batch[0]
-        target = batch[-1]
+        target = batch[1]
+        (root, scale) = batch[2]
         images = images.to(device, non_blocking=True)
         target = target.to(device, non_blocking=True)
-
+        root = root.to(device, non_blocking=True)
+        scale = scale.to(device, non_blocking=True)
         # compute output
         with torch.cuda.amp.autocast():
             output = model(images)
@@ -165,6 +169,13 @@ def evaluate(data_loader, model, device):
 
 
         batch_size = images.shape[0]
+        pck_10 = utils.pck_metric(target, output, root, scale, 10)
+        pck_20 = utils.pck_metric(target, output, root, scale, 20)
+        pck_30 = utils.pck_metric(target, output, root, scale, 30)
+        metric_logger.meters["pck10"].update(pck_10, n=batch_size)
+        metric_logger.meters["pck20"].update(pck_20, n=batch_size)
+        metric_logger.meters["pck30"].update(pck_30, n=batch_size)
+
         metric_logger.update(loss=loss.item())
     # gather the stats from all processes
     metric_logger.synchronize_between_processes()

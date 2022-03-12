@@ -28,6 +28,13 @@ from modeling_discrete_vae import Dalle_VAE, DiscreteVAE
 
 from tensorboardX import SummaryWriter
 
+def pck_metric(true_coords, predicted_coords, root, scale, threshold=10):
+    true_coords = np.reshape(true_coords, (21, 3))
+    predicted_coords = np.reshape(true_coords, (21, 3))
+    diff = predicted_coords - true_coords
+    scaled_shifted_diff = (diff + root) * scale
+    distance = np.sqrt(np.sum(np.square(scaled_shifted_diff), axis=-1))
+    return np.mean(distance <= threshold)
 
 class SmoothedValue(object):
     """Track a series of values and provide access to smoothed values over a
